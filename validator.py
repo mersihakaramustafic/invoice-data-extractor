@@ -17,7 +17,7 @@ class Invoice(BaseModel):
     client_address: str
     client_tax_id: str
     line_items: List[LineItem]
-    net_total: float
+    subtotal: float
     vat: float
     total_amount: float
     currency: str

@@ -1,6 +1,10 @@
 import glob
 from pdf_reader import read_pdf
 from executor import extract_invoice_data
+from db import store_invoice
+
+from dotenv import load_dotenv
+load_dotenv()
 
 LIMIT = 10  # process only 10 invoices
 
@@ -11,3 +15,4 @@ for invoice_file in invoice_files:
     text = read_pdf(invoice_file)
     result = extract_invoice_data(text)
     print(result)
+    store_invoice(result)
