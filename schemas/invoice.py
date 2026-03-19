@@ -1,11 +1,6 @@
 from pydantic import BaseModel
 from typing import List
-
-class LineItem(BaseModel):
-    no: int
-    description: str
-    quantity: float
-    total_amount: float
+from schemas.line_item import LineItem
 
 class Invoice(BaseModel):
     invoice_number: str

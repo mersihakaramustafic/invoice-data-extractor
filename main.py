@@ -1,10 +1,10 @@
-import glob
-from pdf_reader import read_pdf
-from executor import extract_invoice_data
-from db import store_invoice
-
 from dotenv import load_dotenv
 load_dotenv()
+
+import glob
+from utils.pdf_reader import read_pdf
+from llm.extractor import extract_invoice_data
+from db.invoice_store import store_invoice
 
 LIMIT = 10  # process only 10 invoices
 
