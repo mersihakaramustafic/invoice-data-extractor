@@ -3,3 +3,6 @@ python-dotenv
 openai>=1.30.0
 supabase
 langfuse>=2.0.0
+fastapi
+uvicorn
+python-multipart
