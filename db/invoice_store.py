@@ -1,14 +1,12 @@
-from db.db_client import get_supabase_client
+from db.db_client import insert_invoice, insert_line_item
 from schemas.invoice import Invoice
 
 
-async def store_invoice(invoice: Invoice):
-    supabase_client = await get_supabase_client()
+def store_invoice(invoice: Invoice):
     invoice_data = invoice.model_dump(exclude={"line_items"})
-    response = await supabase_client.table("invoice").insert(invoice_data).execute()
-    invoice_id = response.data[0]["id"]
+    invoice_id = insert_invoice(invoice_data)
 
     for item in invoice.line_items:
         line_item_data = item.model_dump()
         line_item_data["invoice_id"] = invoice_id
-        await supabase_client.table("line_item").insert(line_item_data).execute()
+        insert_line_item(line_item_data)

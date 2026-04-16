@@ -260,10 +260,10 @@ async def index():
 
 
 @observe(name="process_invoice")
-async def process_invoice(file_bytes: bytes) -> Invoice:
+def process_invoice(file_bytes: bytes) -> Invoice:
     text = read_pdf_from_bytes(file_bytes)
     result = extract_invoice_data(text)
-    await store_invoice(result)
+    store_invoice(result)
     return result
 
 
@@ -273,4 +273,4 @@ async def upload_invoice(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail="Only PDF files are accepted")
 
     contents = await file.read()
-    return await process_invoice(contents)
+    return process_invoice(contents)
