@@ -28,6 +28,9 @@ async def index():
 @observe(name="process_invoice")
 def extract_and_observe(file_bytes: bytes) -> Invoice:
     text = read_pdf_from_bytes(file_bytes)
+    print("=== EXTRACTED PDF TEXT ===")
+    print(text)
+    print("==========================")
     return extract_invoice_data(text)
 
 
