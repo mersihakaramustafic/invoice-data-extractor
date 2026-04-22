@@ -30,7 +30,8 @@ def extract_invoice_data(invoice_text: str):
             {"role": "system", "content": system_text},
             {"role": "user", "content": user_text}
         ],
-        text_format=Invoice
+        text_format=Invoice,
+        temperature=0,
     )
 
     langfuse.update_current_generation(
