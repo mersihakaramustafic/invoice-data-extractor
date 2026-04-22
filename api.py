@@ -1,6 +1,7 @@
 from dotenv import load_dotenv
 load_dotenv()
 
+import logging
 from pathlib import Path
 from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -9,6 +10,8 @@ from utils.pdf_reader import read_pdf_from_bytes
 from llm.extractor import extract_invoice_data
 from db.invoice_store import store_invoice
 from schemas.invoice import Invoice
+
+logging.basicConfig(level=logging.INFO)
 
 app = FastAPI()
 
@@ -28,9 +31,7 @@ async def index():
 @observe(name="process_invoice")
 def extract_and_observe(file_bytes: bytes) -> Invoice:
     text = read_pdf_from_bytes(file_bytes)
-    print("=== EXTRACTED PDF TEXT ===")
-    print(text)
-    print("==========================")
+    logging.info("=== EXTRACTED PDF TEXT ===\n%s\n==========================", text)
     return extract_invoice_data(text)
 
 
