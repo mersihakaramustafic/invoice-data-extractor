@@ -77,6 +77,10 @@
     .totals .total { font-size: 16px; font-weight: 700; color: #111; }
     .spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 8px; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    .model-row { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+    .model-row label { font-size: 13px; font-weight: 500; color: #374151; white-space: nowrap; }
+    .model-row select { flex: 1; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; color: #111; background: #fff; cursor: pointer; }
+    .model-row select:focus { outline: none; border-color: #6366f1; }
   </style>
 </head>
 <body>
@@ -88,6 +92,16 @@
     <div class="upload-icon">📄</div>
     <p>Drag &amp; drop a PDF here, or <strong>click to browse</strong></p>
     <div class="file-name" id="fileName"></div>
+  </div>
+
+  <div class="model-row">
+    <label for="modelSelect">Model</label>
+    <select id="modelSelect">
+      <option value="gpt-4o-mini">gpt-4o-mini</option>
+      <option value="gpt-4o">gpt-4o</option>
+      <option value="gpt-4.1">gpt-4.1</option>
+      <option value="gpt-4.1-mini">gpt-4.1-mini</option>
+    </select>
   </div>
 
   <button id="uploadBtn" disabled>Upload &amp; Extract</button>
@@ -150,6 +164,7 @@
   const fileInput = document.getElementById('fileInput');
   const fileNameEl = document.getElementById('fileName');
   const uploadBtn = document.getElementById('uploadBtn');
+  const modelSelect = document.getElementById('modelSelect');
   const errorEl = document.getElementById('error');
   const resultEl = document.getElementById('result');
   let selectedFile = null;
@@ -185,7 +200,7 @@
     form.append('file', selectedFile);
 
     try {
-      const res = await fetch('/invoices/upload', { method: 'POST', body: form });
+      const res = await fetch(`/invoices/upload?model=${encodeURIComponent(modelSelect.value)}`, { method: 'POST', body: form });
       const data = await res.json();
       if (!res.ok) { showError(data.detail || 'Upload failed.'); return; }
       renderResult(data);
