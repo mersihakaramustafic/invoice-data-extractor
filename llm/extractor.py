@@ -1,25 +1,24 @@
 from openai import OpenAI
 from langfuse import observe, get_client
 from schemas.invoice import Invoice
+import logging
 
 client = OpenAI()
 
 
 @observe(as_type="generation", capture_output=False)
-def extract_invoice_data(invoice_text: str, model: str = "gpt-4o-mini"):
+def extract_invoice_data(invoice_text: str, model: str = "gpt-4.1-mini"):
     langfuse = get_client()
 
-    system_prompt = langfuse.get_prompt("system-prompt-invoice-extraction", label="production")
-    user_prompt = langfuse.get_prompt("user-prompt-invoice-extraction", label="production")
+    system_prompt = langfuse.get_prompt("system-prompt-invoice-extraction", label="production", cache_ttl_seconds=600)
+    user_prompt = langfuse.get_prompt("user-prompt-invoice-extraction", label="production", cache_ttl_seconds=600)
 
     system_text = system_prompt.compile()
     user_text = user_prompt.compile(invoice_text=invoice_text)
-    # Fallback: Langfuse compile() uses Mustache {{var}} syntax; if the template
-    # still uses Python-style {var}, substitute manually so the LLM sees real text.
+    
     if "{invoice_text}" in user_text:
         user_text = user_text.replace("{invoice_text}", invoice_text)
 
-    import logging
     logging.info("=== SYSTEM PROMPT ===\n%s", system_text)
     logging.info("=== USER PROMPT ===\n%s", user_text)
 
