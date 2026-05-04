@@ -63,27 +63,34 @@ async def batch_invoices(model: str = DEFAULT_MODEL):
 
     files = list_invoices(SUPABASE_BUCKET)
     if not files:
-        return {"total": 0, "succeeded": 0, "failed": 0}
+        return {"total": 0, "succeeded": 0, "skipped": 0, "failed": 0, "errors": []}
 
     semaphore = asyncio.Semaphore(BATCH_CONCURRENCY)
     loop = asyncio.get_event_loop()
     executor = ThreadPoolExecutor(max_workers=BATCH_CONCURRENCY)
     succeeded = 0
+    skipped = 0
     failed = 0
+    errors = []
 
-    def process(filename: str):
+    def process(filename: str) -> bool:
         file_bytes = download_invoice(SUPABASE_BUCKET, filename)
-        return extract_and_observe(file_bytes, model=model)
+        result = extract_and_observe(file_bytes, model=model)
+        return store_invoice(result)
 
     async def process_one(filename: str):
-        nonlocal succeeded, failed
+        nonlocal succeeded, skipped, failed
         async with semaphore:
             try:
-                await loop.run_in_executor(executor, process, filename)
-                succeeded += 1
+                stored = await loop.run_in_executor(executor, process, filename)
+                if stored:
+                    succeeded += 1
+                else:
+                    skipped += 1
             except Exception as e:
                 failed += 1
+                errors.append({"file": filename, "error": str(e)})
                 logging.error("FAILED %s: %s", filename, e)
 
     await asyncio.gather(*[process_one(f) for f in files])
-    return {"total": len(files), "succeeded": succeeded, "failed": failed}
+    return {"total": len(files), "succeeded": succeeded, "skipped": skipped, "failed": failed, "errors": errors}

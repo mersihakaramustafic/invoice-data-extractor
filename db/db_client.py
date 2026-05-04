@@ -1,5 +1,6 @@
 import os
 import json
+import urllib.parse
 import urllib.request
 from schemas.invoice import Invoice
 
@@ -27,6 +28,32 @@ def _supabase_request(path: str, payload: dict) -> dict:
     )
     with urllib.request.urlopen(req) as resp:
         return json.loads(resp.read().decode("utf-8"))
+
+
+def _supabase_get(path: str) -> list:
+    url = os.getenv("SUPABASE_URL")
+    key = os.getenv("SUPABASE_KEY")
+    if not url:
+        raise ValueError("SUPABASE_URL is missing")
+    if not key:
+        raise ValueError("SUPABASE_KEY is missing")
+
+    full_url = f"{url.rstrip('/')}/rest/v1/{path}"
+    req = urllib.request.Request(
+        full_url,
+        method="GET",
+        headers={
+            "apikey": key,
+            "Authorization": f"Bearer {key}",
+        },
+    )
+    with urllib.request.urlopen(req) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
+def invoice_exists(invoice_number: str) -> bool:
+    rows = _supabase_get(f"invoice?invoice_number=eq.{urllib.parse.quote(invoice_number)}&select=id")
+    return len(rows) > 0
 
 
 def insert_invoice(invoice_data: dict) -> str:
