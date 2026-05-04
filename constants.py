@@ -1,5 +1,7 @@
 ALLOWED_MODELS = ["gpt-4o-mini", "gpt-4o", "gpt-4.1", "gpt-4.1-mini"]
 DEFAULT_MODEL = "gpt-4.1-mini"
+SUPABASE_BUCKET = "invoices"
+BATCH_CONCURRENCY = 10
 
 REQUIRED_FIELDS = [
     "invoice_number", "invoice_date", "seller_name", "seller_address", "seller_tax_id",
