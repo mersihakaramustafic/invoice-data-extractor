@@ -1,3 +1,4 @@
+import logging
 import os
 import json
 import urllib.request
@@ -28,10 +29,14 @@ def _storage_request(method: str, path: str, payload: dict | None = None) -> byt
 
 
 def list_invoices(bucket: str) -> list[str]:
+    logging.info("Listing invoices in bucket: %s", bucket)
     raw = _storage_request("POST", f"object/list/{bucket}", {"prefix": "", "limit": 10000})
     files = json.loads(raw)
-    return [f["name"] for f in files if f["name"].endswith(".pdf")]
+    names = [f["name"] for f in files if f["name"].endswith(".pdf")]
+    logging.info("Found %d invoice(s) in bucket %s", len(names), bucket)
+    return names
 
 
 def download_invoice(bucket: str, path: str) -> bytes:
+    logging.info("Downloading invoice: %s/%s", bucket, path)
     return _storage_request("GET", f"object/{bucket}/{path}")

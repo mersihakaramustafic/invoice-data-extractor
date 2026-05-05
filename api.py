@@ -50,6 +50,7 @@ async def upload_invoice(file: UploadFile = File(...), model: str = DEFAULT_MODE
     if model not in ALLOWED_MODELS:
         raise HTTPException(status_code=400, detail=f"Model must be one of: {', '.join(ALLOWED_MODELS)}")
 
+    logging.info("Uploading invoice: filename=%s model=%s", file.filename, model)
     contents = await file.read()
     result = extract_and_observe(contents, model=model)
     result.file_path = file.filename

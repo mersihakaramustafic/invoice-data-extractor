@@ -50,7 +50,9 @@ def extract_invoice_data(invoice_text: str, model: str = "gpt-4.1-mini"):
         prompt=user_prompt,
     )
 
+    logging.info("Calling OpenAI model=%s", model)
     response = _call_openai(model, system_text, user_text)
+    logging.info("OpenAI response received: input_tokens=%d output_tokens=%d", response.usage.input_tokens, response.usage.output_tokens)
 
     langfuse.update_current_generation(
         output=response.output_parsed.model_dump() if response.output_parsed else None,

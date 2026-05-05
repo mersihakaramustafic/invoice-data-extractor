@@ -1,3 +1,4 @@
+import logging
 import os
 import json
 import urllib.parse
@@ -52,14 +53,19 @@ def _supabase_get(path: str) -> list:
 
 
 def invoice_exists(invoice_number: str) -> bool:
+    logging.info("Checking if invoice exists: %s", invoice_number)
     rows = _supabase_get(f"invoice?invoice_number=eq.{urllib.parse.quote(invoice_number)}&select=id")
     return len(rows) > 0
 
 
 def insert_invoice(invoice_data: dict) -> str:
+    logging.info("Inserting invoice: %s", invoice_data.get("invoice_number"))
     result = _supabase_request("invoice", invoice_data)
-    return result[0]["id"]
+    invoice_id = result[0]["id"]
+    logging.info("Inserted invoice with id=%s", invoice_id)
+    return invoice_id
 
 
 def insert_line_item(line_item_data: dict) -> None:
+    logging.info("Inserting line item for invoice_id=%s", line_item_data.get("invoice_id"))
     _supabase_request("line_item", line_item_data)
