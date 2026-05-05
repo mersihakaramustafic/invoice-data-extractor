@@ -22,7 +22,6 @@ def _call_openai(model: str, system_text: str, user_text: str):
         ],
         text_format=Invoice,
         temperature=0,
-        # test
     )
 
 
