@@ -16,3 +16,4 @@ class Invoice(BaseModel):
     vat: float
     total_amount: float
     currency: str
+    file_path: Optional[str] = None

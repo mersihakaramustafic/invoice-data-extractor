@@ -14,7 +14,7 @@ from llm.extractor import extract_invoice_data
 from db.invoice_store import store_invoice
 from db.storage_client import list_invoices, download_invoice
 from schemas.invoice import Invoice
-from constants import ALLOWED_MODELS, DEFAULT_MODEL, SUPABASE_BUCKET, BATCH_CONCURRENCY
+from constants import ALLOWED_MODELS, DEFAULT_MODEL, SUPABASE_BUCKET, BATCH_SIZE, BATCH_LIMIT
 
 logging.basicConfig(level=logging.INFO)
 
@@ -52,22 +52,26 @@ async def upload_invoice(file: UploadFile = File(...), model: str = DEFAULT_MODE
 
     contents = await file.read()
     result = extract_and_observe(contents, model=model)
+    result.file_path = file.filename
     store_invoice(result)
     return result
 
 
 @app.post("/invoices/batch")
-async def batch_invoices(model: str = DEFAULT_MODEL):
+async def batch_invoices(
+    model: str = DEFAULT_MODEL,
+    limit: int = BATCH_LIMIT,
+    batch_size: int = BATCH_SIZE,
+):
     if model not in ALLOWED_MODELS:
         raise HTTPException(status_code=400, detail=f"Model must be one of: {', '.join(ALLOWED_MODELS)}")
 
-    files = list_invoices(SUPABASE_BUCKET)
+    files = list_invoices(SUPABASE_BUCKET)[:limit]
     if not files:
         return {"total": 0, "succeeded": 0, "skipped": 0, "failed": 0, "errors": []}
 
-    semaphore = asyncio.Semaphore(BATCH_CONCURRENCY)
     loop = asyncio.get_event_loop()
-    executor = ThreadPoolExecutor(max_workers=BATCH_CONCURRENCY)
+    executor = ThreadPoolExecutor(max_workers=batch_size)
     succeeded = 0
     skipped = 0
     failed = 0
@@ -76,21 +80,25 @@ async def batch_invoices(model: str = DEFAULT_MODEL):
     def process(filename: str) -> bool:
         file_bytes = download_invoice(SUPABASE_BUCKET, filename)
         result = extract_and_observe(file_bytes, model=model)
+        result.file_path = filename
         return store_invoice(result)
 
     async def process_one(filename: str):
         nonlocal succeeded, skipped, failed
-        async with semaphore:
-            try:
-                stored = await loop.run_in_executor(executor, process, filename)
-                if stored:
-                    succeeded += 1
-                else:
-                    skipped += 1
-            except Exception as e:
-                failed += 1
-                errors.append({"file": filename, "error": str(e)})
-                logging.error("FAILED %s: %s", filename, e)
+        try:
+            stored = await loop.run_in_executor(executor, process, filename)
+            if stored:
+                succeeded += 1
+            else:
+                skipped += 1
+        except Exception as e:
+            failed += 1
+            errors.append({"file": filename, "error": str(e)})
+            logging.error("FAILED %s: %s", filename, e)
 
-    await asyncio.gather(*[process_one(f) for f in files])
+    for i in range(0, len(files), batch_size):
+        batch = files[i : i + batch_size]
+        logging.info("Processing batch %d/%d (%d files)", i // batch_size + 1, -(-len(files) // batch_size), len(batch))
+        await asyncio.gather(*[process_one(f) for f in batch])
+
     return {"total": len(files), "succeeded": succeeded, "skipped": skipped, "failed": failed, "errors": errors}
