@@ -37,6 +37,32 @@ def list_invoices(bucket: str) -> list[str]:
     return names
 
 
+def upload_invoice(bucket: str, path: str, file_bytes: bytes) -> None:
+    url = os.getenv("SUPABASE_URL")
+    key = os.getenv("SUPABASE_KEY")
+    if not url:
+        raise ValueError("SUPABASE_URL is missing")
+    if not key:
+        raise ValueError("SUPABASE_KEY is missing")
+
+    full_url = f"{url.rstrip('/')}/storage/v1/object/{bucket}/{path}"
+    req = urllib.request.Request(
+        full_url,
+        data=file_bytes,
+        method="POST",
+        headers={
+            "apikey": key,
+            "Authorization": f"Bearer {key}",
+            "Content-Type": "application/pdf",
+            "x-upsert": "true",
+        },
+    )
+    logging.info("Uploading invoice to bucket: %s/%s (%d bytes)", bucket, path, len(file_bytes))
+    with urllib.request.urlopen(req) as resp:
+        resp.read()
+    logging.info("Uploaded invoice to bucket: %s/%s", bucket, path)
+
+
 def download_invoice(bucket: str, path: str) -> bytes:
     logging.info("Downloading invoice: %s/%s", bucket, path)
     return _storage_request("GET", f"object/{bucket}/{path}")

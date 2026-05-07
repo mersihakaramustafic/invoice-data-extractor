@@ -12,7 +12,7 @@ from utils.pdf_reader import read_pdf_from_bytes
 from utils.scoring import completeness_score
 from llm.extractor import extract_invoice_data
 from db.invoice_store import store_invoice
-from db.storage_client import list_invoices, download_invoice
+from db.storage_client import list_invoices, download_invoice, upload_invoice
 from schemas.invoice import Invoice
 from constants import ALLOWED_MODELS, DEFAULT_MODEL, SUPABASE_BUCKET, BATCH_SIZE, BATCH_LIMIT
 
@@ -52,6 +52,7 @@ async def upload_invoice(file: UploadFile = File(...), model: str = DEFAULT_MODE
 
     logging.info("Uploading invoice: filename=%s model=%s", file.filename, model)
     contents = await file.read()
+    upload_invoice(SUPABASE_BUCKET, file.filename, contents)
     result = extract_and_observe(contents, model=model)
     result.file_path = file.filename
     store_invoice(result)
