@@ -37,7 +37,7 @@ def list_invoices(bucket: str) -> list[str]:
     return names
 
 
-def upload_invoice(bucket: str, path: str, file_bytes: bytes) -> None:
+def upload_to_bucket(bucket: str, path: str, file_bytes: bytes) -> None:
     url = os.getenv("SUPABASE_URL")
     key = os.getenv("SUPABASE_KEY")
     if not url:

@@ -12,7 +12,7 @@ from utils.pdf_reader import read_pdf_from_bytes
 from utils.scoring import completeness_score
 from llm.extractor import extract_invoice_data
 from db.invoice_store import store_invoice
-from db.storage_client import list_invoices, download_invoice, upload_invoice
+from db.storage_client import list_invoices, download_invoice, upload_to_bucket
 from schemas.invoice import Invoice
 from constants import ALLOWED_MODELS, DEFAULT_MODEL, SUPABASE_BUCKET, BATCH_SIZE, BATCH_LIMIT
 
@@ -43,20 +43,23 @@ def extract_and_observe(file_bytes: bytes, model: str) -> Invoice:
     return result
 
 
-@app.post("/invoices/upload", response_model=Invoice)
-async def upload_invoice(file: UploadFile = File(...), model: str = DEFAULT_MODEL):
-    if not file.filename.endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Only PDF files are accepted")
-    if model not in ALLOWED_MODELS:
-        raise HTTPException(status_code=400, detail=f"Model must be one of: {', '.join(ALLOWED_MODELS)}")
-
-    logging.info("Uploading invoice: filename=%s model=%s", file.filename, model)
-    contents = await file.read()
-    upload_invoice(SUPABASE_BUCKET, file.filename, contents)
-    result = extract_and_observe(contents, model=model)
-    result.file_path = file.filename
-    store_invoice(result)
-    return result
+@app.post("/invoices/upload")
+async def upload_invoices(files: list[UploadFile] = File(...)):
+    results = []
+    for file in files:
+        if not file.filename.endswith(".pdf"):
+            logging.warning("Rejected non-PDF file: %s", file.filename)
+            results.append({"file": file.filename, "status": "rejected", "detail": "Only PDF files are accepted"})
+            continue
+        contents = await file.read()
+        try:
+            upload_to_bucket(SUPABASE_BUCKET, file.filename, contents)
+            logging.info("Uploaded %s to bucket", file.filename)
+            results.append({"file": file.filename, "status": "uploaded"})
+        except Exception as e:
+            logging.error("Failed to upload %s to bucket: %s", file.filename, e)
+            results.append({"file": file.filename, "status": "error", "detail": str(e)})
+    return results
 
 
 @app.post("/invoices/batch")

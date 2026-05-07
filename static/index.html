@@ -23,7 +23,24 @@
       width: 100%;
       max-width: 680px;
     }
-    h1 { font-size: 22px; font-weight: 600; margin-bottom: 24px; color: #111; }
+    h1 { font-size: 22px; font-weight: 600; margin-bottom: 8px; color: #111; }
+    .subtitle {
+      font-size: 13px;
+      color: #6b7280;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .subtitle .dot {
+      width: 8px; height: 8px;
+      background: #22c55e;
+      border-radius: 50%;
+      display: inline-block;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
     .upload-area {
       border: 2px dashed #d1d5db;
       border-radius: 8px;
@@ -37,8 +54,40 @@
     .upload-area input { display: none; }
     .upload-icon { font-size: 36px; margin-bottom: 8px; }
     .upload-area p { color: #6b7280; font-size: 14px; }
-    .upload-area .file-name { color: #6366f1; font-weight: 500; margin-top: 6px; }
-    button {
+    .upload-area .hint { font-size: 12px; color: #9ca3af; margin-top: 4px; }
+
+    /* selection summary */
+    .selection {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+    .selection .sel-info { font-size: 14px; color: #111; }
+    .selection .sel-info span { font-weight: 600; color: #6366f1; }
+    .selection .clear-btn {
+      font-size: 12px;
+      color: #6b7280;
+      cursor: pointer;
+      background: none;
+      border: none;
+      width: auto;
+      padding: 4px 8px;
+      font-weight: 500;
+    }
+    .selection .clear-btn:hover { color: #dc2626; background: none; }
+
+    /* progress */
+    .progress-wrap { display: none; margin-bottom: 16px; }
+    .progress-label { font-size: 13px; color: #374151; margin-bottom: 6px; display: flex; justify-content: space-between; }
+    .progress-bar-track { background: #e5e7eb; border-radius: 999px; height: 8px; overflow: hidden; }
+    .progress-bar-fill { background: #6366f1; height: 100%; border-radius: 999px; transition: width 0.3s ease; width: 0%; }
+
+    button#uploadBtn {
       width: 100%;
       padding: 12px;
       background: #6366f1;
@@ -50,124 +99,154 @@
       cursor: pointer;
       transition: background 0.2s;
     }
-    button:hover:not(:disabled) { background: #4f46e5; }
-    button:disabled { background: #a5b4fc; cursor: not-allowed; }
-    .error {
-      margin-top: 16px;
-      padding: 12px 16px;
+    button#uploadBtn:hover:not(:disabled) { background: #4f46e5; }
+    button#uploadBtn:disabled { background: #a5b4fc; cursor: not-allowed; }
+
+    /* result summary */
+    .result-summary { display: none; margin-top: 20px; }
+    .stat-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .stat {
+      flex: 1;
+      padding: 14px;
+      border-radius: 8px;
+      text-align: center;
+    }
+    .stat.ok   { background: #f0fdf4; border: 1px solid #bbf7d0; }
+    .stat.skip { background: #fefce8; border: 1px solid #fde68a; }
+    .stat.fail { background: #fef2f2; border: 1px solid #fecaca; }
+    .stat .num  { font-size: 24px; font-weight: 700; color: #111; }
+    .stat .lbl  { font-size: 12px; color: #6b7280; margin-top: 2px; }
+    .stat.ok .num  { color: #16a34a; }
+    .stat.skip .num { color: #ca8a04; }
+    .stat.fail .num { color: #dc2626; }
+
+    .failures { display: none; }
+    .failures h3 { font-size: 13px; font-weight: 600; color: #dc2626; margin-bottom: 8px; }
+    .failure-item {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 6px;
+      margin-bottom: 6px;
+      font-size: 13px;
+    }
+    .failure-item .fname { font-weight: 500; color: #111; }
+    .failure-item .reason { color: #dc2626; font-size: 12px; }
+
+    .info-bar {
+      margin-top: 20px;
+      padding: 10px 14px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 8px;
+      font-size: 13px;
+      color: #1d4ed8;
+    }
+    .error-banner {
+      margin-top: 12px;
+      padding: 10px 14px;
       background: #fef2f2;
       border: 1px solid #fecaca;
       border-radius: 8px;
       color: #dc2626;
-      font-size: 14px;
+      font-size: 13px;
       display: none;
     }
-    .result { margin-top: 24px; display: none; }
-    .result h2 { font-size: 16px; font-weight: 600; margin-bottom: 16px; color: #111; }
-    .section { margin-bottom: 20px; }
-    .section-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #9ca3af; margin-bottom: 8px; }
-    .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .field label { font-size: 11px; color: #9ca3af; display: block; margin-bottom: 2px; }
-    .field span { font-size: 14px; color: #111; font-weight: 500; }
-    table { width: 100%; border-collapse: collapse; font-size: 14px; }
-    thead th { text-align: left; font-size: 12px; font-weight: 600; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em; padding: 6px 8px; border-bottom: 1px solid #e5e7eb; }
-    tbody td { padding: 8px; border-bottom: 1px solid #f3f4f6; color: #111; }
-    .totals { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; margin-top: 12px; }
-    .totals div { font-size: 14px; color: #374151; }
-    .totals .total { font-size: 16px; font-weight: 700; color: #111; }
-    .spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 8px; }
+    .btn-spinner {
+      display: inline-block; width: 16px; height: 16px;
+      border: 2px solid #fff; border-top-color: transparent;
+      border-radius: 50%; animation: spin 0.7s linear infinite;
+      vertical-align: middle; margin-right: 8px;
+    }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .model-row { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
-    .model-row label { font-size: 13px; font-weight: 500; color: #374151; white-space: nowrap; }
-    .model-row select { flex: 1; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; color: #111; background: #fff; cursor: pointer; }
-    .model-row select:focus { outline: none; border-color: #6366f1; }
   </style>
 </head>
 <body>
 <div class="card">
   <h1>Invoice Extractor</h1>
+  <p class="subtitle">
+    <span class="dot"></span>
+    Invoices are processed automatically every hour
+  </p>
 
   <div class="upload-area" id="dropZone">
-    <input type="file" id="fileInput" accept=".pdf" />
+    <input type="file" id="fileInput" accept=".pdf" multiple />
     <div class="upload-icon">📄</div>
-    <p>Drag &amp; drop a PDF here, or <strong>click to browse</strong></p>
-    <div class="file-name" id="fileName"></div>
+    <p>Drag &amp; drop PDFs here, or <strong>click to browse</strong></p>
+    <p class="hint">Multiple files supported</p>
   </div>
 
-  <div class="model-row">
-    <label for="modelSelect">Model</label>
-    <select id="modelSelect">
-      <option value="gpt-4o-mini">gpt-4o-mini</option>
-      <option value="gpt-4o">gpt-4o</option>
-      <option value="gpt-4.1">gpt-4.1</option>
-      <option value="gpt-4.1-mini" selected>gpt-4.1-mini</option>
-    </select>
+  <div class="selection" id="selection">
+    <div class="sel-info">
+      <span id="selCount">0</span> PDF file(s) selected
+    </div>
+    <button class="clear-btn" id="clearBtn">Clear</button>
   </div>
 
-  <button id="uploadBtn" disabled>Upload &amp; Extract</button>
-  <div class="error" id="error"></div>
+  <div class="progress-wrap" id="progressWrap">
+    <div class="progress-label">
+      <span id="progressLabel">Uploading…</span>
+      <span id="progressPct">0%</span>
+    </div>
+    <div class="progress-bar-track">
+      <div class="progress-bar-fill" id="progressFill"></div>
+    </div>
+  </div>
 
-  <div class="result" id="result">
-    <h2>Extracted Data</h2>
+  <button id="uploadBtn" disabled>Upload to Bucket</button>
+  <div class="error-banner" id="errorBanner"></div>
 
-    <div class="section">
-      <div class="section-title">Invoice</div>
-      <div class="fields">
-        <div class="field"><label>Number</label><span id="r-invoice_number"></span></div>
-        <div class="field"><label>Date</label><span id="r-invoice_date"></span></div>
-        <div class="field"><label>Currency</label><span id="r-currency"></span></div>
+  <div class="result-summary" id="resultSummary">
+    <div class="stat-row">
+      <div class="stat ok">
+        <div class="num" id="statUploaded">0</div>
+        <div class="lbl">Uploaded</div>
+      </div>
+      <div class="stat skip">
+        <div class="num" id="statRejected">0</div>
+        <div class="lbl">Rejected</div>
+      </div>
+      <div class="stat fail">
+        <div class="num" id="statFailed">0</div>
+        <div class="lbl">Failed</div>
       </div>
     </div>
-
-    <div class="section">
-      <div class="section-title">Seller</div>
-      <div class="fields">
-        <div class="field"><label>Name</label><span id="r-seller_name"></span></div>
-        <div class="field"><label>Tax ID</label><span id="r-seller_tax_id"></span></div>
-        <div class="field" style="grid-column: span 2"><label>Address</label><span id="r-seller_address"></span></div>
-      </div>
+    <div class="failures" id="failureList">
+      <h3>Failed files</h3>
+      <div id="failureItems"></div>
     </div>
+  </div>
 
-    <div class="section">
-      <div class="section-title">Client</div>
-      <div class="fields">
-        <div class="field"><label>Name</label><span id="r-client_name"></span></div>
-        <div class="field"><label>Tax ID</label><span id="r-client_tax_id"></span></div>
-        <div class="field" style="grid-column: span 2"><label>Address</label><span id="r-client_address"></span></div>
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section-title">Line Items</div>
-      <table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Description</th>
-            <th>Qty</th>
-            <th>Amount</th>
-          </tr>
-        </thead>
-        <tbody id="r-line_items"></tbody>
-      </table>
-      <div class="totals">
-        <div>Subtotal: <strong id="r-subtotal"></strong></div>
-        <div>VAT: <strong id="r-vat"></strong></div>
-        <div class="total">Total: <span id="r-total_amount"></span></div>
-      </div>
-    </div>
+  <div class="info-bar">
+    Uploaded invoices will be extracted and stored to the database on the next scheduled run.
   </div>
 </div>
 
 <script>
-  const dropZone = document.getElementById('dropZone');
-  const fileInput = document.getElementById('fileInput');
-  const fileNameEl = document.getElementById('fileName');
-  const uploadBtn = document.getElementById('uploadBtn');
-  const modelSelect = document.getElementById('modelSelect');
-  const errorEl = document.getElementById('error');
-  const resultEl = document.getElementById('result');
-  let selectedFile = null;
+  const dropZone    = document.getElementById('dropZone');
+  const fileInput   = document.getElementById('fileInput');
+  const selection   = document.getElementById('selection');
+  const selCount    = document.getElementById('selCount');
+  const clearBtn    = document.getElementById('clearBtn');
+  const progressWrap = document.getElementById('progressWrap');
+  const progressLabel = document.getElementById('progressLabel');
+  const progressPct  = document.getElementById('progressPct');
+  const progressFill = document.getElementById('progressFill');
+  const uploadBtn   = document.getElementById('uploadBtn');
+  const errorBanner = document.getElementById('errorBanner');
+  const resultSummary = document.getElementById('resultSummary');
+  const failureList   = document.getElementById('failureList');
+  const failureItems  = document.getElementById('failureItems');
+
+  const BATCH_SIZE = 20;
+  let selectedFiles = [];
 
   dropZone.addEventListener('click', () => fileInput.click());
   dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
@@ -175,74 +254,107 @@
   dropZone.addEventListener('drop', e => {
     e.preventDefault();
     dropZone.classList.remove('drag-over');
-    const file = e.dataTransfer.files[0];
-    if (file) setFile(file);
+    addFiles(Array.from(e.dataTransfer.files));
   });
-  fileInput.addEventListener('change', () => { if (fileInput.files[0]) setFile(fileInput.files[0]); });
+  fileInput.addEventListener('change', () => { addFiles(Array.from(fileInput.files)); fileInput.value = ''; });
+  clearBtn.addEventListener('click', clearSelection);
 
-  function setFile(file) {
-    if (!file.name.endsWith('.pdf')) { showError('Only PDF files are accepted.'); return; }
-    selectedFile = file;
-    fileNameEl.textContent = file.name;
-    uploadBtn.disabled = false;
-    errorEl.style.display = 'none';
-    resultEl.style.display = 'none';
+  function addFiles(files) {
+    const pdfs = files.filter(f => f.name.endsWith('.pdf'));
+    const bad  = files.length - pdfs.length;
+    if (bad) showError(`${bad} non-PDF file(s) were ignored.`);
+    const existing = new Set(selectedFiles.map(f => f.name));
+    pdfs.forEach(f => { if (!existing.has(f.name)) selectedFiles.push(f); });
+    updateSelectionUI();
+  }
+
+  function clearSelection() {
+    selectedFiles = [];
+    updateSelectionUI();
+    resultSummary.style.display = 'none';
+    errorBanner.style.display = 'none';
+  }
+
+  function updateSelectionUI() {
+    const hasFiles = selectedFiles.length > 0;
+    selection.style.display = hasFiles ? 'flex' : 'none';
+    selCount.textContent = selectedFiles.length;
+    uploadBtn.disabled = !hasFiles;
+  }
+
+  function setProgress(done, total) {
+    const pct = Math.round((done / total) * 100);
+    progressFill.style.width = pct + '%';
+    progressPct.textContent  = pct + '%';
+    progressLabel.textContent = `Uploading ${done} / ${total} files…`;
   }
 
   uploadBtn.addEventListener('click', async () => {
-    if (!selectedFile) return;
+    if (!selectedFiles.length) return;
+
+    errorBanner.style.display = 'none';
+    resultSummary.style.display = 'none';
     uploadBtn.disabled = true;
-    uploadBtn.innerHTML = '<span class="spinner"></span>Extracting…';
-    errorEl.style.display = 'none';
-    resultEl.style.display = 'none';
+    uploadBtn.innerHTML = '<span class="btn-spinner"></span>Uploading…';
+    progressWrap.style.display = 'block';
+    setProgress(0, selectedFiles.length);
 
-    const form = new FormData();
-    form.append('file', selectedFile);
+    let uploaded = 0, rejected = 0, failed = 0;
+    const failures = [];
+    let done = 0;
 
-    try {
-      const res = await fetch(`/invoices/upload?model=${encodeURIComponent(modelSelect.value)}`, { method: 'POST', body: form });
-      const data = await res.json();
-      if (!res.ok) { showError(data.detail || 'Upload failed.'); return; }
-      renderResult(data);
-    } catch (e) {
-      showError('Network error: ' + e.message);
-    } finally {
-      uploadBtn.disabled = false;
-      uploadBtn.innerHTML = 'Upload &amp; Extract';
+    // send in batches to show progress and avoid request size limits
+    for (let i = 0; i < selectedFiles.length; i += BATCH_SIZE) {
+      const batch = selectedFiles.slice(i, i + BATCH_SIZE);
+      const form = new FormData();
+      batch.forEach(f => form.append('files', f));
+
+      try {
+        const res  = await fetch('/invoices/upload', { method: 'POST', body: form });
+        const data = await res.json();
+        if (!res.ok) { showError(data.detail || 'Upload failed.'); break; }
+        data.forEach(r => {
+          if (r.status === 'uploaded')       uploaded++;
+          else if (r.status === 'rejected')  rejected++;
+          else { failed++; failures.push(r); }
+        });
+      } catch (e) {
+        failed += batch.length;
+        batch.forEach(f => failures.push({ file: f.name, status: 'error', detail: e.message }));
+      }
+
+      done += batch.length;
+      setProgress(done, selectedFiles.length);
     }
+
+    progressWrap.style.display = 'none';
+    uploadBtn.disabled = false;
+    uploadBtn.innerHTML = 'Upload to Bucket';
+
+    document.getElementById('statUploaded').textContent = uploaded;
+    document.getElementById('statRejected').textContent = rejected;
+    document.getElementById('statFailed').textContent   = failed;
+    resultSummary.style.display = 'block';
+
+    if (failures.length) {
+      failureItems.innerHTML = failures.map(r =>
+        `<div class="failure-item">
+          <span class="fname">${r.file}</span>
+          <span class="reason">${r.detail || r.status}</span>
+        </div>`
+      ).join('');
+      failureList.style.display = 'block';
+    } else {
+      failureList.style.display = 'none';
+    }
+
+    selectedFiles = [];
+    updateSelectionUI();
   });
 
   function showError(msg) {
-    errorEl.textContent = msg;
-    errorEl.style.display = 'block';
-  }
-
-  function set(id, val) { document.getElementById('r-' + id).textContent = val ?? '—'; }
-
-  function renderResult(d) {
-    set('invoice_number', d.invoice_number);
-    set('invoice_date', d.invoice_date);
-    set('currency', d.currency);
-    set('seller_name', d.seller_name);
-    set('seller_tax_id', d.seller_tax_id);
-    set('seller_address', d.seller_address);
-    set('client_name', d.client_name);
-    set('client_tax_id', d.client_tax_id);
-    set('client_address', d.client_address);
-    set('subtotal', fmt(d.subtotal, d.currency));
-    set('vat', fmt(d.vat, d.currency));
-    set('total_amount', fmt(d.total_amount, d.currency));
-
-    const tbody = document.getElementById('r-line_items');
-    tbody.innerHTML = (d.line_items || []).map(item =>
-      `<tr><td>${item.no}</td><td>${item.description}</td><td>${item.quantity}</td><td>${fmt(item.total_amount, d.currency)}</td></tr>`
-    ).join('');
-
-    resultEl.style.display = 'block';
-  }
-
-  function fmt(val, currency) {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD' }).format(val);
+    errorBanner.textContent = msg;
+    errorBanner.style.display = 'block';
   }
 </script>
 </body>
