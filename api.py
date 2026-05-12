@@ -12,7 +12,11 @@ from utils.pdf_reader import read_pdf_from_bytes
 from utils.scoring import completeness_score
 from llm.extractor import extract_invoice_data
 from db.invoice_store import store_invoice
-from db.storage_client import list_invoices, download_invoice, upload_to_bucket
+from db.storage_client import download_invoice, upload_to_bucket
+from db.document_store import (
+    compute_file_hash, document_exists, insert_document,
+    get_pending_documents, mark_processing, mark_processed, mark_failed,
+)
 from schemas.invoice import Invoice
 from constants import ALLOWED_MODELS, DEFAULT_MODEL, SUPABASE_BUCKET, BATCH_SIZE, BATCH_LIMIT
 
@@ -53,11 +57,17 @@ async def upload_invoices(files: list[UploadFile] = File(...)):
             continue
         contents = await file.read()
         try:
+            file_hash = compute_file_hash(contents)
+            if document_exists(file_hash):
+                logging.info("Duplicate file skipped: %s", file.filename)
+                results.append({"file": file.filename, "status": "duplicate"})
+                continue
             upload_to_bucket(SUPABASE_BUCKET, file.filename, contents)
+            insert_document(SUPABASE_BUCKET + "/" + file.filename, file.filename, file_hash)
             logging.info("Uploaded %s to bucket", file.filename)
             results.append({"file": file.filename, "status": "uploaded"})
         except Exception as e:
-            logging.error("Failed to upload %s to bucket: %s", file.filename, e)
+            logging.error("Failed to upload %s: %s", file.filename, e)
             results.append({"file": file.filename, "status": "error", "detail": str(e)})
     return results
 
@@ -71,8 +81,8 @@ async def batch_invoices(
     if model not in ALLOWED_MODELS:
         raise HTTPException(status_code=400, detail=f"Model must be one of: {', '.join(ALLOWED_MODELS)}")
 
-    files = list_invoices(SUPABASE_BUCKET)[:limit]
-    if not files:
+    docs = get_pending_documents(limit)
+    if not docs:
         return {"total": 0, "succeeded": 0, "skipped": 0, "failed": 0, "errors": []}
 
     loop = asyncio.get_event_loop()
@@ -82,28 +92,32 @@ async def batch_invoices(
     failed = 0
     errors = []
 
-    def process(filename: str) -> bool:
-        file_bytes = download_invoice(SUPABASE_BUCKET, filename)
+    def process(doc: dict) -> bool:
+        mark_processing(doc["id"])
+        file_bytes = download_invoice(SUPABASE_BUCKET, doc["file_name"])
         result = extract_and_observe(file_bytes, model=model)
-        result.file_path = filename
-        return store_invoice(result)
+        result.file_path = doc["file_path"]
+        stored = store_invoice(result)
+        mark_processed(doc["id"])
+        return stored
 
-    async def process_one(filename: str):
+    async def process_one(doc: dict):
         nonlocal succeeded, skipped, failed
         try:
-            stored = await loop.run_in_executor(executor, process, filename)
+            stored = await loop.run_in_executor(executor, process, doc)
             if stored:
                 succeeded += 1
             else:
                 skipped += 1
         except Exception as e:
             failed += 1
-            errors.append({"file": filename, "error": str(e)})
-            logging.error("FAILED %s: %s", filename, e)
+            errors.append({"file": doc["file_name"], "error": str(e)})
+            logging.error("FAILED %s: %s", doc["file_name"], e)
+            mark_failed(doc["id"], str(e), doc["retry_count"])
 
-    for i in range(0, len(files), batch_size):
-        batch = files[i : i + batch_size]
-        logging.info("Processing batch %d/%d (%d files)", i // batch_size + 1, -(-len(files) // batch_size), len(batch))
-        await asyncio.gather(*[process_one(f) for f in batch])
+    for i in range(0, len(docs), batch_size):
+        batch = docs[i : i + batch_size]
+        logging.info("Processing batch %d/%d (%d files)", i // batch_size + 1, -(-len(docs) // batch_size), len(batch))
+        await asyncio.gather(*[process_one(d) for d in batch])
 
-    return {"total": len(files), "succeeded": succeeded, "skipped": skipped, "failed": failed, "errors": errors}
+    return {"total": len(docs), "succeeded": succeeded, "skipped": skipped, "failed": failed, "errors": errors}

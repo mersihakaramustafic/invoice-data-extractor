@@ -210,6 +210,10 @@
         <div class="lbl">Uploaded</div>
       </div>
       <div class="stat skip">
+        <div class="num" id="statDuplicate">0</div>
+        <div class="lbl">Duplicate</div>
+      </div>
+      <div class="stat skip">
         <div class="num" id="statRejected">0</div>
         <div class="lbl">Rejected</div>
       </div>
@@ -299,7 +303,7 @@
     progressWrap.style.display = 'block';
     setProgress(0, selectedFiles.length);
 
-    let uploaded = 0, rejected = 0, failed = 0;
+    let uploaded = 0, rejected = 0, failed = 0, duplicates = 0;
     const failures = [];
     let done = 0;
 
@@ -314,7 +318,8 @@
         const data = await res.json();
         if (!res.ok) { showError(data.detail || 'Upload failed.'); break; }
         data.forEach(r => {
-          if (r.status === 'uploaded')       uploaded++;
+          if (r.status === 'uploaded')        uploaded++;
+          else if (r.status === 'duplicate') duplicates++;
           else if (r.status === 'rejected')  rejected++;
           else { failed++; failures.push(r); }
         });
@@ -331,9 +336,10 @@
     uploadBtn.disabled = false;
     uploadBtn.innerHTML = 'Upload to Bucket';
 
-    document.getElementById('statUploaded').textContent = uploaded;
-    document.getElementById('statRejected').textContent = rejected;
-    document.getElementById('statFailed').textContent   = failed;
+    document.getElementById('statUploaded').textContent  = uploaded;
+    document.getElementById('statDuplicate').textContent = duplicates;
+    document.getElementById('statRejected').textContent  = rejected;
+    document.getElementById('statFailed').textContent    = failed;
     resultSummary.style.display = 'block';
 
     if (failures.length) {

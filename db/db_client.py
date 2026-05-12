@@ -52,6 +52,30 @@ def _supabase_get(path: str) -> list:
         return json.loads(resp.read().decode("utf-8"))
 
 
+def _supabase_patch(path: str, payload: dict) -> None:
+    url = os.getenv("SUPABASE_URL")
+    key = os.getenv("SUPABASE_KEY")
+    if not url:
+        raise ValueError("SUPABASE_URL is missing")
+    if not key:
+        raise ValueError("SUPABASE_KEY is missing")
+
+    full_url = f"{url.rstrip('/')}/rest/v1/{path}"
+    data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        full_url,
+        data=data,
+        method="PATCH",
+        headers={
+            "apikey": key,
+            "Authorization": f"Bearer {key}",
+            "Content-Type": "application/json",
+        },
+    )
+    with urllib.request.urlopen(req) as resp:
+        resp.read()
+
+
 def invoice_exists(invoice_number: str) -> bool:
     logging.info("Checking if invoice exists: %s", invoice_number)
     rows = _supabase_get(f"invoice?invoice_number=eq.{urllib.parse.quote(invoice_number)}&select=id")
