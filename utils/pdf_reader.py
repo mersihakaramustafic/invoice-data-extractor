@@ -6,7 +6,7 @@ from pypdf import PdfReader
 
 def read_pdf_from_bytes(file_bytes: bytes) -> str:
     reader = PdfReader(BytesIO(file_bytes))
-    logging.info("Reading PDF: %d page(s)", len(reader.pages))
+    logging.info("Reading PDF: %d pages", len(reader.pages))
     text = ""
     for page in reader.pages:
         text += page.extract_text() + "\n"

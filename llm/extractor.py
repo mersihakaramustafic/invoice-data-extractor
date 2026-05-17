@@ -1,10 +1,10 @@
-from openai import OpenAI, RateLimitError, APIStatusError
+import logging
+from openai import AsyncOpenAI, RateLimitError, APIStatusError
 from langfuse import observe, get_client
 from schemas.invoice import Invoice
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
-import logging
 
-client = OpenAI()
+client = AsyncOpenAI()
 
 
 @retry(
@@ -13,8 +13,8 @@ client = OpenAI()
     stop=stop_after_attempt(3),
     reraise=True,
 )
-def _call_openai(model: str, system_text: str, user_text: str):
-    return client.responses.parse(
+async def _call_openai(model: str, system_text: str, user_text: str):
+    return await client.responses.parse(
         model=model,
         input=[
             {"role": "system", "content": system_text},
@@ -26,7 +26,7 @@ def _call_openai(model: str, system_text: str, user_text: str):
 
 
 @observe(as_type="generation", capture_output=False)
-def extract_invoice_data(invoice_text: str, model: str = "gpt-4.1-mini"):
+async def extract_invoice_data(invoice_text: str, model: str = "gpt-4.1-mini"):
     langfuse = get_client()
 
     system_prompt = langfuse.get_prompt("system-prompt-invoice-extraction", label="production", cache_ttl_seconds=600)
@@ -51,7 +51,7 @@ def extract_invoice_data(invoice_text: str, model: str = "gpt-4.1-mini"):
     )
 
     logging.info("Calling OpenAI model=%s", model)
-    response = _call_openai(model, system_text, user_text)
+    response = await _call_openai(model, system_text, user_text)
     logging.info("OpenAI response received: input_tokens=%d output_tokens=%d", response.usage.input_tokens, response.usage.output_tokens)
 
     langfuse.update_current_generation(
