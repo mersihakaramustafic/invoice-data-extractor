@@ -1,14 +1,14 @@
 import logging
-from openai import AsyncOpenAI, RateLimitError, APIStatusError
+from openai import AsyncOpenAI, RateLimitError, APIStatusError, APITimeoutError
 from langfuse import observe, get_client
 from schemas.invoice import Invoice
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
-client = AsyncOpenAI()
+client = AsyncOpenAI(timeout=60.0)
 
 
 @retry(
-    retry=retry_if_exception_type((RateLimitError, APIStatusError)),
+    retry=retry_if_exception_type((RateLimitError, APIStatusError, APITimeoutError)),
     wait=wait_exponential(multiplier=1, min=2, max=30),
     stop=stop_after_attempt(3),
     reraise=True,
