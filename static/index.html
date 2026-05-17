@@ -102,6 +102,39 @@
     button#uploadBtn:hover:not(:disabled) { background: #4f46e5; }
     button#uploadBtn:disabled { background: #a5b4fc; cursor: not-allowed; }
 
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 20px 0;
+      color: #9ca3af;
+      font-size: 12px;
+    }
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #e5e7eb;
+    }
+
+    button#processBtn {
+      width: 100%;
+      padding: 12px;
+      background: #fff;
+      color: #6366f1;
+      border: 1.5px solid #6366f1;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+    button#processBtn:hover:not(:disabled) { background: #f5f3ff; }
+    button#processBtn:disabled { border-color: #a5b4fc; color: #a5b4fc; cursor: not-allowed; }
+
+    .process-result { display: none; margin-top: 20px; }
+    .process-result h3 { font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 12px; }
+
     /* result summary */
     .result-summary { display: none; margin-top: 20px; }
     .stat-row {
@@ -228,8 +261,34 @@
     </div>
   </div>
 
+  <div class="divider">or</div>
+  <button id="processBtn">Process Now</button>
+  <div class="error-banner" id="processBanner"></div>
+
+  <div class="process-result" id="processResult">
+    <h3>Processing complete</h3>
+    <div class="stat-row">
+      <div class="stat ok">
+        <div class="num" id="procSucceeded">0</div>
+        <div class="lbl">Succeeded</div>
+      </div>
+      <div class="stat skip">
+        <div class="num" id="procSkipped">0</div>
+        <div class="lbl">Skipped</div>
+      </div>
+      <div class="stat fail">
+        <div class="num" id="procFailed">0</div>
+        <div class="lbl">Failed</div>
+      </div>
+    </div>
+    <div class="failures" id="procFailureList">
+      <h3>Errors</h3>
+      <div id="procFailureItems"></div>
+    </div>
+  </div>
+
   <div class="info-bar">
-    Uploaded invoices will be extracted and stored to the database on the next scheduled run.
+    Uploaded invoices are also processed automatically every hour.
   </div>
 </div>
 
@@ -362,6 +421,52 @@
     errorBanner.textContent = msg;
     errorBanner.style.display = 'block';
   }
+
+  const processBtn     = document.getElementById('processBtn');
+  const processBanner  = document.getElementById('processBanner');
+  const processResult  = document.getElementById('processResult');
+  const procFailureList = document.getElementById('procFailureList');
+  const procFailureItems = document.getElementById('procFailureItems');
+
+  processBtn.addEventListener('click', async () => {
+    processBanner.style.display = 'none';
+    processResult.style.display = 'none';
+    processBtn.disabled = true;
+    processBtn.innerHTML = '<span class="btn-spinner" style="border-color:#6366f1;border-top-color:transparent"></span>Processing…';
+
+    try {
+      const res  = await fetch('/invoices/batch', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) {
+        processBanner.textContent = data.detail || 'Processing failed.';
+        processBanner.style.display = 'block';
+        return;
+      }
+
+      document.getElementById('procSucceeded').textContent = data.succeeded;
+      document.getElementById('procSkipped').textContent   = data.skipped;
+      document.getElementById('procFailed').textContent    = data.failed;
+      processResult.style.display = 'block';
+
+      if (data.errors && data.errors.length) {
+        procFailureItems.innerHTML = data.errors.map(e =>
+          `<div class="failure-item">
+            <span class="fname">${e.file}</span>
+            <span class="reason">${e.error || 'unknown error'}</span>
+          </div>`
+        ).join('');
+        procFailureList.style.display = 'block';
+      } else {
+        procFailureList.style.display = 'none';
+      }
+    } catch (e) {
+      processBanner.textContent = e.message;
+      processBanner.style.display = 'block';
+    } finally {
+      processBtn.disabled = false;
+      processBtn.innerHTML = 'Process Now';
+    }
+  });
 </script>
 </body>
 </html>
