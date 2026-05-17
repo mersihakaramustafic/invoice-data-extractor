@@ -62,7 +62,8 @@ async def download_invoice(bucket: str, path: str) -> bytes:
 async def delete_from_bucket(bucket: str, path: str) -> None:
     logging.info("Deleting invoice from bucket: %s/%s", bucket, path)
     async with httpx.AsyncClient() as client:
-        resp = await client.delete(
+        resp = await client.request(
+            "DELETE",
             f"{_base_url()}/object/{bucket}",
             json={"prefixes": [path]},
             headers=_headers(),
