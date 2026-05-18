@@ -67,5 +67,21 @@ async def mark_failed(doc_id: str, error_message: str, retry_count: int) -> None
     )
 
 
+async def log_event(
+    file_name: str,
+    level: str,
+    event: str,
+    document_id: str | None = None,
+    message: str | None = None,
+) -> None:
+    await _supabase_post("invoice_logs", {
+        "document_id": document_id,
+        "file_name": file_name,
+        "level": level,
+        "event": event,
+        "message": message,
+    })
+
+
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()

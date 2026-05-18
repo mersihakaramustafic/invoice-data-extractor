@@ -6,7 +6,7 @@ from utils.scoring import completeness_score
 from llm.extractor import extract_invoice_data
 from db.invoice_store import store_invoice
 from db.storage_client import download_invoice, delete_from_bucket
-from db.document_store import mark_processing, mark_processed, mark_failed
+from db.document_store import mark_processing, mark_processed, mark_failed, log_event
 from schemas.invoice import Invoice
 from constants import SUPABASE_BUCKET
 
@@ -41,16 +41,24 @@ class InvoicePipeline:
         return results
 
     async def _process(self, doc: dict) -> dict:
+        doc_id = doc["id"]
+        file_name = doc["file_name"]
         try:
-            await mark_processing(doc["id"])
-            file_bytes = await download_invoice(SUPABASE_BUCKET, doc["file_name"])
+            await mark_processing(doc_id)
+            await log_event(file_name, "info", "processing_started", document_id=doc_id)
+
+            file_bytes = await download_invoice(SUPABASE_BUCKET, file_name)
             result = await _extract_and_observe(file_bytes, model=self.model)
             result.file_path = doc["file_path"]
             stored = await store_invoice(result)
-            await mark_processed(doc["id"])
-            await delete_from_bucket(SUPABASE_BUCKET, doc["file_name"])
-            return {"file_name": doc["file_name"], "status": "success" if stored else "skipped"}
+            await mark_processed(doc_id)
+            await delete_from_bucket(SUPABASE_BUCKET, file_name)
+
+            status = "success" if stored else "skipped"
+            await log_event(file_name, "info", f"processing_{status}", document_id=doc_id)
+            return {"file_name": file_name, "status": status}
         except Exception as e:
-            logging.error("FAILED %s: %s", doc["file_name"], e)
-            await mark_failed(doc["id"], str(e), doc["retry_count"])
-            return {"file_name": doc["file_name"], "status": "failed", "error": str(e)}
+            logging.error("FAILED %s: %s", file_name, e)
+            await mark_failed(doc_id, str(e), doc["retry_count"])
+            await log_event(file_name, "error", "processing_failed", document_id=doc_id, message=str(e))
+            return {"file_name": file_name, "status": "failed", "error": str(e)}
