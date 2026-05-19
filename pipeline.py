@@ -2,7 +2,7 @@ import asyncio
 import logging
 from langfuse import observe, get_client
 from utils.pdf_reader import read_pdf_from_bytes
-from utils.scoring import completeness_score
+from utils.scoring import completeness_score, schema_validity_score, hallucination_score
 from llm.extractor import extract_invoice_data
 from db.invoice_store import store_invoice
 from db.storage_client import download_invoice, delete_from_bucket
@@ -16,8 +16,13 @@ async def _extract_and_observe(file_bytes: bytes, model: str) -> Invoice:
     text = read_pdf_from_bytes(file_bytes)
     logging.info("=== EXTRACTED PDF TEXT ===\n%s\n==========================", text)
     result = await extract_invoice_data(text, model=model)
-    score, comment = completeness_score(result)
-    get_client().score_current_trace(name="completeness", value=score, comment=comment)
+    lf = get_client()
+    completeness, c_comment = completeness_score(result)
+    lf.score_current_trace(name="completeness", value=completeness, comment=c_comment)
+    validity, v_comment = schema_validity_score(result)
+    lf.score_current_trace(name="schema_validity", value=validity, comment=v_comment)
+    hallucination, h_comment = hallucination_score(result, text)
+    lf.score_current_trace(name="hallucination", value=hallucination, comment=h_comment)
     return result
 
 
