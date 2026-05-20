@@ -50,7 +50,7 @@ class InvoicePipeline:
         file_name = doc["file_name"]
         try:
             await mark_processing(doc_id)
-            await log_event(file_name, "info", "processing_started", document_id=doc_id)
+            await log_event(doc_id, "info", "processing_started")
 
             file_bytes = await download_invoice(SUPABASE_BUCKET, file_name)
             result = await _extract_and_observe(file_bytes, model=self.model)
@@ -60,10 +60,10 @@ class InvoicePipeline:
             await delete_from_bucket(SUPABASE_BUCKET, file_name)
 
             status = "success" if stored else "skipped"
-            await log_event(file_name, "info", f"processing_{status}", document_id=doc_id)
+            await log_event(doc_id, "info", f"processing_{status}")
             return {"file_name": file_name, "status": status}
         except Exception as e:
             logging.error("FAILED %s: %s", file_name, e)
-            await mark_failed(doc_id, str(e), doc["retry_count"])
-            await log_event(file_name, "error", "processing_failed", document_id=doc_id, message=str(e))
+            await mark_failed(doc_id, doc["retry_count"])
+            await log_event(doc_id, "error", "processing_failed", message=str(e))
             return {"file_name": file_name, "status": "failed", "error": str(e)}

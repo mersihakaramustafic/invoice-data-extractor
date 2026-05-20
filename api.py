@@ -8,7 +8,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from db.storage_client import upload_to_bucket
 from db.document_store import compute_file_hash, document_exists, insert_document, get_pending_documents
 from pipeline import InvoicePipeline
-from constants import ALLOWED_MODELS, DEFAULT_MODEL, SUPABASE_BUCKET, BATCH_SIZE, BATCH_LIMIT, MAX_UPLOAD_FILES
+from constants import ALLOWED_MODELS, DEFAULT_MODEL, SUPABASE_BUCKET, BATCH_SIZE, BATCH_LIMIT
 
 logging.basicConfig(level=logging.INFO)
 
@@ -30,8 +30,7 @@ async def index():
 
 @app.post("/invoices/upload")
 async def upload_invoices(files: list[UploadFile] = File(...)):
-    if len(files) > MAX_UPLOAD_FILES:
-        raise HTTPException(status_code=400, detail=f"Max {MAX_UPLOAD_FILES} files per request")
+
     results = []
     for file in files:
         if not file.filename.endswith(".pdf"):
@@ -39,19 +38,23 @@ async def upload_invoices(files: list[UploadFile] = File(...)):
             results.append({"file": file.filename, "status": "rejected", "detail": "Only PDF files are accepted"})
             continue
         contents = await file.read()
+
         try:
             file_hash = compute_file_hash(contents)
             if await document_exists(file_hash):
                 logging.info("Duplicate file skipped: %s", file.filename)
                 results.append({"file": file.filename, "status": "duplicate"})
                 continue
+
             await upload_to_bucket(SUPABASE_BUCKET, file.filename, contents)
             await insert_document(SUPABASE_BUCKET + "/" + file.filename, file.filename, file_hash)
             logging.info("Uploaded %s to bucket", file.filename)
             results.append({"file": file.filename, "status": "uploaded"})
+
         except Exception as e:
             logging.error("Failed to upload %s: %s", file.filename, e)
             results.append({"file": file.filename, "status": "error", "detail": str(e)})
+            
     return results
 
 

@@ -1,6 +1,13 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional
 from schemas.line_item import LineItem
+
+
+def _to_float(v):
+    if isinstance(v, str):
+        return float(v.replace(",", ".").replace(" ", ""))
+    return v
+
 
 class Invoice(BaseModel):
     invoice_number: str = Field(description="Invoice number copied exactly as it appears — do not reformat or add prefixes like INV-")
@@ -17,3 +24,8 @@ class Invoice(BaseModel):
     total_amount: float
     currency: str
     file_path: Optional[str] = None
+
+    @field_validator("subtotal", "vat", "total_amount", mode="before")
+    @classmethod
+    def coerce_numeric(cls, v):
+        return _to_float(v)

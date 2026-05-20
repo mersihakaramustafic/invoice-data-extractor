@@ -51,32 +51,26 @@ async def mark_processed(doc_id: str) -> None:
     await _supabase_patch(
         "invoice_documents",
         {"id": f"eq.{doc_id}"},
-        {"status": "processed", "processed_at": _now(), "error_message": None},
+        {"status": "processed", "processed_at": _now()},
     )
 
 
-async def mark_failed(doc_id: str, error_message: str, retry_count: int) -> None:
+async def mark_failed(doc_id: str, retry_count: int) -> None:
     await _supabase_patch(
         "invoice_documents",
         {"id": f"eq.{doc_id}"},
-        {
-            "status": "failed",
-            "error_message": error_message[:500],
-            "retry_count": retry_count + 1,
-        },
+        {"status": "failed", "retry_count": retry_count + 1},
     )
 
 
 async def log_event(
-    file_name: str,
+    document_id: str,
     level: str,
     event: str,
-    document_id: str | None = None,
     message: str | None = None,
 ) -> None:
     await _supabase_post("invoice_logs", {
         "document_id": document_id,
-        "file_name": file_name,
         "level": level,
         "event": event,
         "message": message,

@@ -3,7 +3,6 @@ DEFAULT_MODEL = "gpt-4.1-mini"
 SUPABASE_BUCKET = "invoices"
 BATCH_LIMIT = 50
 BATCH_SIZE = 5
-MAX_UPLOAD_FILES = 5
 
 REQUIRED_FIELDS = [
     "invoice_number", "invoice_date", "seller_name", "seller_address", "seller_tax_id",
