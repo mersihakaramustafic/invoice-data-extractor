@@ -1,5 +1,7 @@
 # Invoice Data Extractor
 
+![Invoice Extractor UI](static/UI%20Screenshot.png)
+
 A web app that extracts structured data from PDF invoices using OpenAI GPT models. Upload PDFs via the UI, trigger processing on demand, and get parsed invoice fields stored in Supabase.
 
 ## Features
