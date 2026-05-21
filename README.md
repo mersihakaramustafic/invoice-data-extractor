@@ -23,56 +23,6 @@ A web app that extracts structured data from PDF invoices using OpenAI GPT model
 | Observability | Langfuse |
 | Database | Supabase (PostgreSQL + Storage) |
 
-## Project Structure
-
-```
-api.py                    # FastAPI app — HTTP endpoints
-pipeline.py               # Batch processing pipeline with concurrency control
-constants.py              # Shared constants (models, bucket name, batch size)
-static/index.html         # Frontend UI
-llm/
-  extractor.py            # Calls OpenAI, manages Langfuse tracing, retry logic
-schemas/
-  invoice.py              # Invoice Pydantic model (with numeric field coercion)
-  line_item.py            # LineItem Pydantic model
-db/
-  db_client.py            # Raw HTTP calls to Supabase REST API
-  document_store.py       # invoice_documents and invoice_logs table operations
-  invoice_store.py        # Persists invoice + line items to Supabase
-  storage_client.py       # Supabase Storage bucket operations
-utils/
-  pdf_reader.py           # Extracts text from PDF bytes using pypdf
-  scoring.py              # Completeness, schema validity, and hallucination scoring
-evaluation/
-  add_dataset_items.py    # Populates Langfuse evaluation dataset
-  eval.py                 # Runs evaluation against the dataset
-```
-
-## Database Tables
-
-**`invoice_documents`** — tracks every uploaded PDF through its lifecycle:
-
-| Column | Description |
-|---|---|
-| `id` | UUID primary key |
-| `file_name` | Original filename |
-| `file_path` | Path in Supabase Storage bucket |
-| `file_hash` | SHA-256 hash for duplicate detection |
-| `status` | `pending` / `processing` / `processed` / `failed` |
-| `retry_count` | Number of failed processing attempts |
-| `uploaded_at` | When the file was first uploaded |
-| `processing_started_at` | When the latest processing attempt started |
-| `processed_at` | When processing completed successfully |
-
-**`invoice_logs`** — append-only event log per document:
-
-| Column | Description |
-|---|---|
-| `document_id` | FK to `invoice_documents` |
-| `level` | `info` / `error` |
-| `event` | e.g. `processing_started`, `processing_success`, `processing_failed` |
-| `message` | Optional detail (error message, etc.) |
-
 ## Extracted Fields
 
 ```json
