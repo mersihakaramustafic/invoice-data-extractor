@@ -3,18 +3,26 @@ load_dotenv()
 
 import logging
 from pathlib import Path
-from fastapi import FastAPI, UploadFile, File, HTTPException, Request
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request, BackgroundTasks
 from fastapi.responses import HTMLResponse, JSONResponse
 from db.storage_client import upload_to_bucket
-from db.document_store import compute_file_hash, document_exists, insert_document, get_pending_documents
+from db.document_store import compute_file_hash, document_exists, insert_document, get_pending_documents, reset_stale_processing, get_status_counts
 from pipeline import InvoicePipeline
-from constants import ALLOWED_MODELS, DEFAULT_MODEL, SUPABASE_BUCKET, BATCH_SIZE, BATCH_LIMIT
+from constants import ALLOWED_MODELS, DEFAULT_MODEL, SUPABASE_BUCKET, BATCH_SIZE
 
 logging.basicConfig(level=logging.INFO)
 
 app = FastAPI()
+_batch_running = False
+_batch_doc_ids: list[str] = []
 
-HTML = (Path(__file__).parent / "static" / "index.html").read_text()
+
+@app.on_event("startup")
+async def on_startup():
+    await reset_stale_processing()
+    logging.info("Stale processing documents reset to pending")
+
+_HTML_PATH = Path(__file__).parent / "static" / "index.html"
 
 
 @app.exception_handler(Exception)
@@ -24,7 +32,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 
 @app.get("/", response_class=HTMLResponse)
 async def index():
-    return HTML
+    return _HTML_PATH.read_text()
 
 
 
@@ -58,46 +66,39 @@ async def upload_invoices(files: list[UploadFile] = File(...)):
     return results
 
 
-@app.post("/invoices/batch")
+async def _run_pipeline(docs: list[dict], model: str, batch_size: int) -> None:
+    global _batch_running
+    try:
+        pipeline = InvoicePipeline(model=model, concurrency=batch_size)
+        await pipeline.run_batch(docs)
+    finally:
+        _batch_running = False
+
+
+@app.post("/invoices/batch", status_code=202)
 async def batch_invoices(
+    background_tasks: BackgroundTasks,
     model: str = DEFAULT_MODEL,
-    limit: int = BATCH_LIMIT,
     batch_size: int = BATCH_SIZE,
 ):
+    global _batch_running
     if model not in ALLOWED_MODELS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Model must be one of: {', '.join(ALLOWED_MODELS)}"
-        )
+        raise HTTPException(status_code=400, detail=f"Model must be one of: {', '.join(ALLOWED_MODELS)}")
+    if _batch_running:
+        raise HTTPException(status_code=409, detail="A batch is already running")
 
-    docs = await get_pending_documents(limit)
-
+    docs = await get_pending_documents()
     if not docs:
-        return {
-            "total": 0,
-            "succeeded": 0,
-            "skipped": 0,
-            "failed": 0,
-            "errors": []
-        }
+        return {"status": "nothing_to_process", "queued": 0}
 
-    pipeline = InvoicePipeline(model=model, concurrency=batch_size)
+    _batch_running = True
+    _batch_doc_ids.clear()
+    _batch_doc_ids.extend(doc["id"] for doc in docs)
+    background_tasks.add_task(_run_pipeline, docs, model, batch_size)
+    return {"status": "started", "queued": len(docs)}
 
-    results = await pipeline.run_batch(docs)
 
-    summary = {
-        "total": len(results),
-        "succeeded": sum(r["status"] == "success" for r in results),
-        "skipped": sum(r["status"] == "skipped" for r in results),
-        "failed": sum(r["status"] == "failed" for r in results),
-        "errors": [
-            {
-                "file": r["file_name"],
-                "error": r.get("error")
-            }
-            for r in results
-            if r["status"] == "failed"
-        ]
-    }
-
-    return summary
+@app.get("/invoices/batch/status")
+async def batch_status():
+    counts = await get_status_counts(_batch_doc_ids)
+    return {"running": _batch_running, "counts": counts}

@@ -265,25 +265,18 @@
   <button id="processBtn">Process Now</button>
   <div class="error-banner" id="processBanner"></div>
 
-  <div class="process-result" id="processResult">
-    <h3>Processing complete</h3>
-    <div class="stat-row">
-      <div class="stat ok">
-        <div class="num" id="procSucceeded">0</div>
-        <div class="lbl">Succeeded</div>
-      </div>
-      <div class="stat skip">
-        <div class="num" id="procSkipped">0</div>
-        <div class="lbl">Skipped</div>
-      </div>
-      <div class="stat fail">
-        <div class="num" id="procFailed">0</div>
-        <div class="lbl">Failed</div>
-      </div>
+  <div id="procStatus" style="display:none; margin-top:20px;">
+    <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+      <span id="procStatusLabel" style="font-size:13px; color:#374151;">Processing…</span>
+      <span id="procStatusPct" style="font-size:13px; color:#374151;">0%</span>
     </div>
-    <div class="failures" id="procFailureList">
-      <h3>Errors</h3>
-      <div id="procFailureItems"></div>
+    <div style="background:#e5e7eb; border-radius:999px; height:8px; overflow:hidden;">
+      <div id="procStatusBar" style="background:#6366f1; height:100%; border-radius:999px; transition:width 0.3s ease; width:0%;"></div>
+    </div>
+    <div class="stat-row" style="margin-top:12px;">
+      <div class="stat ok" ><div class="num" id="procDone">0</div><div class="lbl">Succeeded</div></div>
+      <div class="stat fail"><div class="num" id="procFail">0</div><div class="lbl">Failed</div></div>
+      <div class="stat skip"><div class="num" id="procLeft">0</div><div class="lbl">Remaining</div></div>
     </div>
   </div>
 
@@ -422,47 +415,85 @@
     errorBanner.style.display = 'block';
   }
 
-  const processBtn     = document.getElementById('processBtn');
-  const processBanner  = document.getElementById('processBanner');
-  const processResult  = document.getElementById('processResult');
-  const procFailureList = document.getElementById('procFailureList');
-  const procFailureItems = document.getElementById('procFailureItems');
+  const processBtn    = document.getElementById('processBtn');
+  const processBanner = document.getElementById('processBanner');
+  const procStatus    = document.getElementById('procStatus');
+  const procStatusLabel = document.getElementById('procStatusLabel');
+  const procStatusPct   = document.getElementById('procStatusPct');
+  const procStatusBar   = document.getElementById('procStatusBar');
+
+  let pollTimer = null;
+  let batchTotal = 0;
+  let batchBaseDone = 0;
+
+  function updateProcStatus(counts, running) {
+    const done      = counts.processed;
+    const failed    = counts.failed;
+    const remaining = counts.pending + counts.processing;
+    const total     = done + failed + remaining;
+    const pct       = total > 0 ? Math.round(((done + failed) / total) * 100) : 0;
+
+    procStatusBar.style.width = pct + '%';
+    procStatusPct.textContent  = pct + '%';
+    procStatusLabel.textContent = running ? `Processing… (${remaining} remaining)` : 'Done';
+    document.getElementById('procDone').textContent = done;
+    document.getElementById('procFail').textContent = failed;
+    document.getElementById('procLeft').textContent = remaining;
+    procStatus.style.display = 'block';
+  }
+
+  async function pollOnce() {
+    try {
+      const res  = await fetch('/invoices/batch/status');
+      const data = await res.json();
+      updateProcStatus(data.counts, data.running);
+      if (!data.running) {
+        clearInterval(pollTimer);
+        pollTimer = null;
+        processBtn.disabled = false;
+        processBtn.innerHTML = 'Process Now';
+      }
+    } catch (_) {}
+  }
+
+  function startPolling() {
+    if (pollTimer) return;
+    pollOnce();
+    pollTimer = setInterval(pollOnce, 3000);
+  }
 
   processBtn.addEventListener('click', async () => {
     processBanner.style.display = 'none';
-    processResult.style.display = 'none';
     processBtn.disabled = true;
-    processBtn.innerHTML = '<span class="btn-spinner" style="border-color:#6366f1;border-top-color:transparent"></span>Processing…';
+    processBtn.innerHTML = '<span class="btn-spinner" style="border-color:#6366f1;border-top-color:transparent"></span>Starting…';
 
     try {
       const res  = await fetch('/invoices/batch', { method: 'POST' });
       const data = await res.json();
       if (!res.ok) {
+        processBanner.style.cssText = '';
         processBanner.textContent = data.detail || 'Processing failed.';
         processBanner.style.display = 'block';
+        processBtn.disabled = false;
+        processBtn.innerHTML = 'Process Now';
         return;
       }
 
-      document.getElementById('procSucceeded').textContent = data.succeeded;
-      document.getElementById('procSkipped').textContent   = data.skipped;
-      document.getElementById('procFailed').textContent    = data.failed;
-      processResult.style.display = 'block';
-
-      if (data.errors && data.errors.length) {
-        procFailureItems.innerHTML = data.errors.map(e =>
-          `<div class="failure-item">
-            <span class="fname">${e.file}</span>
-            <span class="reason">${e.error || 'unknown error'}</span>
-          </div>`
-        ).join('');
-        procFailureList.style.display = 'block';
+      if (data.status === 'nothing_to_process') {
+        processBanner.style.background = '#eff6ff';
+        processBanner.style.borderColor = '#bfdbfe';
+        processBanner.style.color = '#1d4ed8';
+        processBanner.textContent = 'No pending invoices to process.';
+        processBanner.style.display = 'block';
+        processBtn.disabled = false;
+        processBtn.innerHTML = 'Process Now';
       } else {
-        procFailureList.style.display = 'none';
+        processBanner.style.display = 'none';
+        startPolling();
       }
     } catch (e) {
       processBanner.textContent = e.message;
       processBanner.style.display = 'block';
-    } finally {
       processBtn.disabled = false;
       processBtn.innerHTML = 'Process Now';
     }

@@ -27,13 +27,35 @@ async def insert_document(file_path: str, file_name: str, file_hash: str) -> str
     return doc_id
 
 
-async def get_pending_documents(limit: int) -> list[dict]:
-    logging.info("Fetching pending invoice documents (limit=%d)", limit)
+async def reset_stale_processing() -> None:
+    await _supabase_patch(
+        "invoice_documents",
+        {"status": "eq.processing"},
+        {"status": "pending"},
+    )
+
+
+async def get_status_counts(doc_ids: list[str]) -> dict:
+    counts = {"pending": 0, "processing": 0, "processed": 0, "failed": 0}
+    if not doc_ids:
+        return counts
+    rows = await _supabase_get("invoice_documents", {
+        "select": "status",
+        "id": f"in.({','.join(doc_ids)})",
+    })
+    for row in rows:
+        status = row.get("status")
+        if status in counts:
+            counts[status] += 1
+    return counts
+
+
+async def get_pending_documents() -> list[dict]:
+    logging.info("Fetching pending invoice documents")
     docs = await _supabase_get("invoice_documents", {
         "status": "in.(pending,failed)",
         "retry_count": f"lt.{MAX_RETRIES}",
         "order": "uploaded_at.asc",
-        "limit": limit,
     })
     logging.info("Found %d document(s) to process", len(docs))
     return docs

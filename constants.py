@@ -1,7 +1,6 @@
 ALLOWED_MODELS = ["gpt-4o-mini", "gpt-4o", "gpt-4.1", "gpt-4.1-mini"]
 DEFAULT_MODEL = "gpt-4.1-mini"
 SUPABASE_BUCKET = "invoices"
-BATCH_LIMIT = 50
 BATCH_SIZE = 5
 
 REQUIRED_FIELDS = [
